@@ -1,0 +1,10 @@
+retroarch_xbmcbuntu
+===================
+
+RetroArch setup script for XBMCbuntu (based off petrockblock's RetroPie-Setup script)
+
+ensure git & dialog packages are installed before running script.
+
+sudo apt-get install dialog git
+
+type 'sudo ./retroarch_setup_xbmcbuntu.sh' to setup RetroArch for XBMCbuntu.
