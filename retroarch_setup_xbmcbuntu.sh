@@ -206,6 +206,17 @@ function update_apt()
     apt-get -y upgrade
 }
 
+# configure sound settings
+function configureSoundsettings()
+{
+    printMsg "Enabling Pulse audio driver for RetroArch in $rootdir/configs/all/retroarch.cfg"    
+
+    # RetroArch settings
+    ensureKeyValue "audio_driver" "pulse" "$rootdir/configs/all/retroarch.cfg"
+    ensureKeyValue "audio_out_rate" "48000" "$rootdir/configs/all/retroarch.cfg"
+    
+}
+
 
 # add user $user to groups "video", "audio", and "input"
 function add_to_groups()
@@ -224,26 +235,6 @@ function add_user_to_group()
       sudo addgroup $2
     fi
     sudo adduser $1 $2
-}
-
-# make sure ALSA, uinput, and joydev modules are active
-function ensure_modules()
-{
-    printMsg "Enabling ALSA, uinput, and joydev modules permanently"
-    sudo modprobe snd_bcm2835
-    sudo modprobe uinput
-    sudo modprobe joydev
-
-    if ! grep -q "uinput" /etc/modules; then
-        addLineToFile "uinput" "/etc/modules"
-    else
-        echo -e "uinput module already contained in /etc/modules"
-    fi
-    if ! grep -q "joydev" /etc/modules; then
-        addLineToFile "joydev" "/etc/modules"
-    else
-        echo -e "joydev module already contained in /etc/modules"
-    fi    
 }
 
 # needed by SDL for working joypads
@@ -275,82 +266,8 @@ function packages_install()
                         build-essential nasm libgl1-mesa-dev libglu1-mesa-dev libsdl1.2-dev \
                         libvorbis-dev libpng12-dev libvpx-dev freepats subversion \
                         libboost-serialization-dev libboost-thread-dev libsdl-ttf2.0-dev \
-                        cmake g++-4.7 unrar-free p7zip p7zip-full
+                        cmake g++-4.7 unrar-free p7zip p7zip-full libpulse-dev
                         # libgles2-mesa-dev
-
-    #Does It Slow Down non NUC?
-    # remove PulseAudio since this is slowing down the whole system significantly
-    #apt-get remove -y pulseaudio
-    #apt-get -y autoremove
-}
-
-# remove all packages that are installed by the RetroPie Setup Script (Not needed yet, no uninstall supported)
-function removeAPTPackages()
-{
-    printMsg "Making sure that all packages that are installed by the script are removed."
-    apt-get remove -y libsdl1.2-dev screen scons libasound2-dev pkg-config libgtk2.0-dev \
-                        libboost-filesystem-dev libboost-system-dev zip python-imaging \
-                        libfreeimage-dev libfreetype6-dev libxml2 libxml2-dev libbz2-dev \
-                        libaudiofile-dev libsdl-sound1.2-dev libsdl-mixer1.2-dev \
-                        joystick fbi gcc-4.7 automake1.4 libcurl4-openssl-dev  libzip-dev \
-                        build-essential nasm libgl1-mesa-dev libglu1-mesa-dev libsdl1.2-dev \
-                        libvorbis-dev libpng12-dev libvpx-dev freepats subversion \
-                        libboost-serialization-dev libboost-thread-dev libsdl-ttf2.0-dev \
-                        cmake g++-4.7 unrar-free p7zip p7zip-full
-                        # libgles2-mesa-dev
-
-    apt-get -y autoremove   
-
-    dialog --backtitle "PetRockBlock.com - RetroPie Setup. Installation folder: $rootdir for user $user" --msgbox "Successfully removed APT packages. For a complete uninstall you need to delete the 'RetroPie' folder on your own." 22 76
-}
-
-# start SNESDev on boot and configure RetroArch input settings
-function enableSplashscreenAtStart()
-{
-    clear
-    printMsg "Enabling custom splashscreen on boot."
-
-    chmod +x "$scriptdir/supplementary/asplashscreen/asplashscreen"
-    cp "$scriptdir/supplementary/asplashscreen/asplashscreen" /etc/init.d/
-
-    cp "$scriptdir/supplementary/asplashscreen/splashscreen.png" /etc/
-
-    # This command installs the init.d script so it automatically starts on boot
-    insserv /etc/init.d/asplashscreen
-    # not-so-elegant hack for later re-enabling the splashscreen
-    update-rc.d asplashscreen enable
-
-}
-
-# disable start SNESDev on boot and remove RetroArch input settings
-function disableSplashscreenAtStart()
-{
-    clear
-    printMsg "Disabling custom splashscreen on boot."
-
-    update-rc.d asplashscreen disable
-
-}
-
-# Show dialogue for enabling/disabling SNESDev on boot
-function enableDisableSplashscreen()
-{
-    cmd=(dialog --backtitle "PetRockBlock.com - RetroPie Setup. Installation folder: $rootdir for user $user" --menu "Choose the desired boot behaviour." 22 86 16)
-    options=(1 "Disable custom splashscreen on boot."
-             2 "Enable custom splashscreen on boot")
-    choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
-    if [ "$choices" != "" ]; then
-        case $choices in
-            1) disableSplashscreenAtStart
-               dialog --backtitle "PetRockBlock.com - RetroPie Setup. Installation folder: $rootdir for user $user" --msgbox "Disabled custom splashscreen on boot." 22 76    
-                            ;;
-            2) enableSplashscreenAtStart
-               dialog --backtitle "PetRockBlock.com - RetroPie Setup. Installation folder: $rootdir for user $user" --msgbox "Enabled custom splashscreen on boot." 22 76    
-                            ;;
-        esac
-    else
-        break
-    fi    
 }
 
 # prepare folder structure for emulator, cores, front end, and roms
@@ -372,7 +289,6 @@ function prepareFolders()
     pathlist+=("$rootdir/roms/snes")
     pathlist+=("$rootdir/emulatorcores")
     pathlist+=("$rootdir/emulators")
-    pathlist+=("$rootdir/supplementary")
 
     for elem in "${pathlist[@]}"
     do
@@ -393,30 +309,22 @@ function configure_retroarch()
         mkdir -p "$rootdir/configs/all/"
         mkdir -p "$rootdir/configs/atari2600/"
         echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/atari2600/retroarch.cfg
-        mkdir -p "$rootdir/configs/cavestory/"
-        echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/cavestory/retroarch.cfg
-        mkdir -p "$rootdir/configs/doom/"
-        echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/doom/retroarch.cfg
-        mkdir -p "$rootdir/configs/gb/"
-        echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/gb/retroarch.cfg
+        mkdir -p "$rootdir/configs/gba/"
+        echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/gba/retroarch.cfg
         mkdir -p "$rootdir/configs/gbc/"
         echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/gbc/retroarch.cfg
-        mkdir -p "$rootdir/configs/gamegear/"
-        echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/gamegear/retroarch.cfg
         mkdir -p "$rootdir/configs/mame/"
         echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/mame/retroarch.cfg
         mkdir -p "$rootdir/configs/mastersystem/"
         echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/mastersystem/retroarch.cfg
+        mkdir -p "$rootdir/configs/megadrive/"
+        echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/megadrive/retroarch.cfg
         mkdir -p "$rootdir/configs/nes/"
         echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/nes/retroarch.cfg
-        mkdir -p "$rootdir/configs/pcengine/"
-        echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/pcengine/retroarch.cfg
         mkdir -p "$rootdir/configs/psx/"
         echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/psx/retroarch.cfg
         mkdir -p "$rootdir/configs/snes/"
         echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/snes/retroarch.cfg
-        mkdir -p "$rootdir/configs/fba/"
-        echo -e "# All settings made here will override the global settings for the current emulator core\n" >> $rootdir/configs/fba/retroarch.cfg
         cp /etc/retroarch.cfg "$rootdir/configs/all/"
     fi
 
@@ -451,6 +359,8 @@ function configure_retroarch()
     ensureKeyValue "input_player1_right" "right" "$rootdir/configs/all/retroarch.cfg"
     ensureKeyValue "input_player1_up" "up" "$rootdir/configs/all/retroarch.cfg"
     ensureKeyValue "input_player1_down" "down" "$rootdir/configs/all/retroarch.cfg"
+    
+    configureSoundsettings
 }
 
 # install RetroArch emulator
@@ -461,7 +371,7 @@ function install_retroarch()
     ./configure
     make
     sudo make install
-    cp $scriptdir/supplementary/retroarch-zip "$rootdir/emulators/RetroArch/"
+    
     if [[ ! -f "/usr/local/bin/retroarch" ]]; then
         __ERRMSGS="$__ERRMSGS Could not successfully compile and install RetroArch."
     fi  
@@ -481,67 +391,67 @@ function install_xboxdrv()
     echo "sleep 1"                                                                >> /etc/rc.local
     
     #configure xbox controllers
-    echo "input_player1_joypad_index = \"0\""    >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_b_btn = \"0\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_y_btn = \"2\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_select_btn = \"6\""      >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_start_btn = \"7\""       >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_up_axis = \"-7\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_down_axis = \"+7\""      >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_left_axis = \"-6\""      >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_right_axis = \"+6\""     >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_a_btn = \"1\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_x_btn = \"3\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l_btn = \"4\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r_btn = \"5\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l2_axis = \"+2\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r2_axis = \"+5\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l3_btn = \"9\""          >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r3_btn = \"10\""         >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l_x_plus_axis = \"+0\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l_x_minus_axis = \"-0\"" >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l_y_plus_axis = \"+1\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l_y_minus_axis = \"-1\"" >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r_x_plus_axis = \"+3\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r_x_minus_axis = \"-3\"" >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r_y_plus_axis = \"+4\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r_y_minus_axis = \"-4\"" >> $rootdir/configs/all/retroarch.cfg
-    
-    echo "input_player2_joypad_index = \"1\""    >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_b_btn = \"0\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_y_btn = \"2\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_select_btn = \"6\""      >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_start_btn = \"7\""       >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_up_axis = \"-7\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_down_axis = \"+7\""      >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_left_axis = \"-6\""      >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_right_axis = \"+6\""     >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_a_btn = \"1\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_x_btn = \"3\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l_btn = \"4\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r_btn = \"5\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l2_axis = \"+2\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r2_axis = \"+5\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l3_btn = \"9\""          >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r3_btn = \"10\""         >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l_x_plus_axis = \"+0\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l_x_minus_axis = \"-0\"" >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l_y_plus_axis = \"+1\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l_y_minus_axis = \"-1\"" >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r_x_plus_axis = \"+3\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r_x_minus_axis = \"-3\"" >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r_y_plus_axis = \"+4\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r_y_minus_axis = \"-4\"" >> $rootdir/configs/all/retroarch.cfg
-
-    echo "input_enable_hotkey_btn = \"8\""       >> $rootdir/configs/all/retroarch.cfg
-    echo "input_exit_emulator_btn = \"5\""       >> $rootdir/configs/all/retroarch.cfg
-    echo "input_rewind_btn = \"4\""              >> $rootdir/configs/all/retroarch.cfg
-    echo "input_save_state_btn = \"3\""          >> $rootdir/configs/all/retroarch.cfg
-    echo "input_load_state_btn = \"0\""          >> $rootdir/configs/all/retroarch.cfg
-    echo "input_state_slot_increase = \"+6\""    >> $rootdir/configs/all/retroarch.cfg
-    echo "input_state_slot_decrease = \"-6\""    >> $rootdir/configs/all/retroarch.cfg
-    echo "input_disk_eject_toggle = \"7\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_disk_next = \"6\""                >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_joypad_index = \"0\""     >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_b_btn = \"0\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_y_btn = \"2\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_select_btn = \"6\""       >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_start_btn = \"7\""        >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_up_axis = \"-7\""         >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_down_axis = \"+7\""       >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_left_axis = \"-6\""       >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_right_axis = \"+6\""      >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_a_btn = \"1\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_x_btn = \"3\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_l_btn = \"4\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_r_btn = \"5\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_l2_axis = \"+2\""         >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_r2_axis = \"+5\""         >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_l3_btn = \"9\""           >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_r3_btn = \"10\""          >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_l_x_plus_axis = \"+0\""   >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_l_x_minus_axis = \"-0\""  >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_l_y_plus_axis = \"+1\""   >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_l_y_minus_axis = \"-1\""  >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_r_x_plus_axis = \"+3\""   >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_r_x_minus_axis = \"-3\""  >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_r_y_plus_axis = \"+4\""   >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player1_r_y_minus_axis = \"-4\""  >> $rootdir/configs/all/retroarch.cfg
+                                                  
+    echo "input_player2_joypad_index = \"1\""     >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_b_btn = \"0\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_y_btn = \"2\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_select_btn = \"6\""       >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_start_btn = \"7\""        >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_up_axis = \"-7\""         >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_down_axis = \"+7\""       >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_left_axis = \"-6\""       >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_right_axis = \"+6\""      >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_a_btn = \"1\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_x_btn = \"3\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_l_btn = \"4\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_r_btn = \"5\""            >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_l2_axis = \"+2\""         >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_r2_axis = \"+5\""         >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_l3_btn = \"9\""           >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_r3_btn = \"10\""          >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_l_x_plus_axis = \"+0\""   >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_l_x_minus_axis = \"-0\""  >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_l_y_plus_axis = \"+1\""   >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_l_y_minus_axis = \"-1\""  >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_r_x_plus_axis = \"+3\""   >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_r_x_minus_axis = \"-3\""  >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_r_y_plus_axis = \"+4\""   >> $rootdir/configs/all/retroarch.cfg
+    echo "input_player2_r_y_minus_axis = \"-4\""  >> $rootdir/configs/all/retroarch.cfg
+                                                  
+    echo "input_enable_hotkey_btn = \"8\""        >> $rootdir/configs/all/retroarch.cfg
+    echo "input_exit_emulator_btn = \"5\""        >> $rootdir/configs/all/retroarch.cfg
+    echo "input_rewind_btn = \"4\""               >> $rootdir/configs/all/retroarch.cfg
+    echo "input_save_state_btn = \"3\""           >> $rootdir/configs/all/retroarch.cfg
+    echo "input_load_state_btn = \"0\""           >> $rootdir/configs/all/retroarch.cfg
+    echo "input_state_slot_increase_btn = \"+6\"" >> $rootdir/configs/all/retroarch.cfg
+    echo "input_state_slot_decrease_btn = \"-6\"" >> $rootdir/configs/all/retroarch.cfg
+    echo "input_disk_eject_toggle_btn = \"7\""    >> $rootdir/configs/all/retroarch.cfg
+    echo "input_disk_next_btn = \"6\""            >> $rootdir/configs/all/retroarch.cfg
 }
 
 # shows help information in the console
@@ -560,18 +470,6 @@ function showHelp()
     echo "sudo ./retroarch_setup_xbmcbuntu.sh USERNAME ABSPATH: The installation directory is ABSPATH for user USERNAME"
     echo ""
 }
-
-# install runcommand script for switching video modes
-function install_runcommandscript()
-{
-    printMsg "Installing script for setting video mode."
-    mkdir -p "$rootdir/supplementary/runcommand/"
-    cp $scriptdir/supplementary/runcommand.sh "$rootdir/supplementary/runcommand/"
-    chmod +x "$rootdir/supplementary/runcommand/runcommand.sh"
-    chown -R $user $rootdir
-    chgrp -R $user $rootdir
-}
-
 
 function checkNeededPackages()
 {
@@ -693,8 +591,24 @@ function main_updatescript()
 #function to configure xbmcbuntu environment suitable for RetroArch and libretro
 function configure_xbmcbuntu_environ()
 {
-       echo "nothing"
+    add_to_groups
+    exportSDLNOMOUSE
 }
+
+#install atari2600 emulator core
+function install_atari2600()
+{
+    printMsg "Installing Atari 2600 RetroArch core"
+    gitPullOrClone "$rootdir/emulatorcores/stella-libretro" git://github.com/libretro/stella-libretro.git
+
+    make -f Makefile
+    if [[ -z `find $rootdir/emulatorcores/stella-libretro/ -name "*libretro*.so"` ]]; then
+        __ERRMSGS="$__ERRMSGS Could not successfully compile Atari 2600 core."
+    fi  
+    popd    
+}
+
+
 
 ##################
 ## menus #########
@@ -702,26 +616,22 @@ function configure_xbmcbuntu_environ()
 
 function retroarch_install()
 {
-#Add user $user to groups video, audio, and input" ON \ # any option can be set to default to "on"
-#Add user $user to groups video, audio, and input" ON \ # any option can be set to default to "on"
-#"(C) Enable modules ALSA, uinput, and joydev" ON \
-#8 "(C) Export SDL_NOMOUSE=1" OFF \ #not sure if i need this
-#54 "(C) Configure sound settings for RetroArch" ON \
     cmd=(dialog --separate-output --backtitle "RetroArch Setup for XBMCbuntu. Installation folder: $rootdir for user $user" --checklist "Select options with 'space' and arrow keys. The default selection installs a complete set of packages and configures basic settings. The entries marked as (C) denote the configuration steps." 22 76 16)
     options=(1 "(C) Configure XBMCbuntu environment" ON \
              2 "(C) Generate folder strucure" ON \
              3 "Install RetroArch" ON \
              4 "(C) Configure RetroArch" ON \
-             5 "Install Atari 2600 core" ON \
-             6 "Install Nintendo core" ON \
-             7 "Install Super Nintendo core" ON \
-             8 "Install Nintendo64 core" ON \
-             9 "Install Playstation core" ON \
-             10 "Install Sega Master System core" ON \
-             11 "Install Sega Genesis core" ON \
-             12 "Install Gameboy Colour core" ON \
-             13 "Install Game Boy Advance core" ON \
-             14 "Install MAME (iMAME4All) core" ON )
+             5 "(C) Install & Configure xboxdrv" ON \
+             6 "Install Atari 2600 core" ON \
+             7 "Install Nintendo core" ON \
+             8 "Install Super Nintendo core" ON \
+             9 "Install Nintendo64 core" ON \
+             10 "Install Playstation core" ON \
+             11 "Install Sega Master System core" ON \
+             12 "Install Sega Genesis core" ON \
+             13 "Install Gameboy Colour core" ON \
+             14 "Install Game Boy Advance core" ON \
+             15 "Install MAME (iMAME4All) core" ON )
     choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
     clear
     __ERRMSGS=""
@@ -734,16 +644,17 @@ function retroarch_install()
                 2) prepareFolders ;;
                 3) install_retroarch ;;
                 4) configure_retroarch ;;
-                5) install_atari2600 ;;
-                6) install_nes ;;
-                7) install_snes ;;
-                8) install_n64 ;;
-                9) install_psx;;
-                10) install_sega_master ;;
-                11) install_sega_genesis;;
-                12) install_gbc ;;
-                13) install_gba ;;
-                14) install_mame ;;
+                5) install_xboxdrv ;;
+                6) install_atari2600 ;;
+                7) install_nes ;;
+                8) install_snes ;;
+                9) install_n64 ;;
+                10) install_psx;;
+                11) install_sega_master ;;
+                12) install_sega_genesis;;
+                13) install_gbc ;;
+                14) install_gba ;;
+                15) install_mame ;;
             esac
         done
 
