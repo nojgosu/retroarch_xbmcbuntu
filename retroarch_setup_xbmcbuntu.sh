@@ -595,18 +595,134 @@ function configure_xbmcbuntu_environ()
     exportSDLNOMOUSE
 }
 
+#update libretro
+function libretro_update()
+{
+    cmd=(dialog --separate-output --backtitle "RetroArch Setup for XBMCbuntu. Installation folder: $rootdir for user $user" --checklist "Select options with 'space' and arrow keys. The default selection installs a complete set of packages and configures basic settings. The entries marked as (C) denote the configuration steps." 22 76 16)
+    options=(1 "Update Atari 2600 core" ON \
+             2 "Update Nintendo core" ON \
+             3 "Update Super Nintendo core" ON \
+             4 "Update Nintendo64 core" ON \
+             5 "Update Playstation core" ON \
+             6 "Update Sega Master System core" ON \
+             7 "Update Sega Genesis core" ON \
+             8 "Update Gameboy Colour core" ON \
+             9 "Update Game Boy Advance core" ON \
+             10 "Update MAME (iMAME4All) core" ON )
+    choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)
+    clear
+    __ERRMSGS=""
+    __INFMSGS=""
+    if [ "$choices" != "" ]; then
+        for choice in $choices
+        do
+            case $choice in
+                1) install_atari2600 ;;
+                2) install_nes ;;
+                3) install_snes ;;
+                4) install_n64 ;;
+                5) install_psx;;
+                6) install_sega_master ;;
+                7) install_sega_genesis;;
+                8) install_gbc ;;
+                9) install_gba ;;
+                10) install_mame ;;
+            esac
+        done
+
+        chgrp -R $user $rootdir
+        chown -R $user $rootdir
+
+        createDebugLog
+
+        if [[ ! -z $__ERRMSGS ]]; then
+            dialog --backtitle "RetroArch Setup for XBMCbuntu. Installation folder: $rootdir for user $user" --msgbox "$__ERRMSGS See debug.log for more details." 20 60    
+        fi
+
+        if [[ ! -z $__INFMSGS ]]; then
+            dialog --backtitle "RetroArch Setup for XBMCbuntu. Installation folder: $rootdir for user $user" --msgbox "$__INFMSGS" 20 60    
+        fi
+
+        dialog --backtitle "RetroArch Setup for XBMCbuntu. Installation folder: $rootdir for user $user" --msgbox "Finished updating.\n Have fun!" 20 60    
+    fi
+}
+
 #install atari2600 emulator core
 function install_atari2600()
 {
     printMsg "Installing Atari 2600 RetroArch core"
     gitPullOrClone "$rootdir/emulatorcores/stella-libretro" git://github.com/libretro/stella-libretro.git
-
     make -f Makefile
     if [[ -z `find $rootdir/emulatorcores/stella-libretro/ -name "*libretro*.so"` ]]; then
         __ERRMSGS="$__ERRMSGS Could not successfully compile Atari 2600 core."
     fi  
     popd    
 }
+
+#install nes emulator core
+function install_nes()
+{
+    printMsg "Installing NES core"
+    gitPullOrClone "$rootdir/emulatorcores/fceu-next" https://github.com/libretro/fceu-next.git
+    pushd fceu-next
+    make -f Makefile.libretro-fceux
+    if [[ -z `find $rootdir/emulatorcores/fceu-next/ -name "*libretro*.so"` ]]; then
+        __ERRMSGS="$__ERRMSGS Could not successfully compile NES core."
+    fi      
+    popd  
+}
+
+#install snes emulator core
+function install_snes()
+{
+    printMsg "Installing SNES core"
+    gitPullOrClone "$rootdir/emulatorcores/snes9x-next" https://github.com/libretro/snes9x-next.git
+    make -f Makefile.libretro
+    if [[ -z `find $rootdir/emulatorcores/snes9x-next/ -name "*libretro*.so"` ]]; then
+        __ERRMSGS="$__ERRMSGS Could not successfully compile SNES core."
+    fi      
+    popd  
+}
+
+function install_n64()
+{
+    printMsg "Ninteno 64 Emulator not available yet - expected to come with RetroArch 1.0.0"
+}
+
+function install_psx()
+{
+    printMsg "Installing PSX core"
+    gitPullOrClone "$rootdir/emulatorcores/pcsx_rearmed" git://github.com/libretro/pcsx_rearmed.git
+    ./configure --platform=libretro
+    make
+    if [[ -z `find $rootdir/emulatorcores/pcsx_rearmed/ -name "*libretro*.so"` ]]; then
+        __ERRMSGS="$__ERRMSGS Could not successfully compile Playstation core."
+    fi      
+    popd
+}
+
+function install_sega_master()
+{
+    printMsg "Installing Sega Master System core"
+    gitPullOrClone "$rootdir/emulatorcores/Genesis-Plus-GX" https://github.com/libretro/Genesis-Plus-GX.git
+    make -f Makefile.libretro
+    if [[ -z `find $rootdir/emulatorcores/Genesis-Plus-GX/ -name "*libretro*.so"` ]]; then
+        __ERRMSGS="$__ERRMSGS Could not successfully compile Sega Master System core."
+    fi      
+    popd
+}
+
+function install_sega_genesis()
+{
+    printMsg "Installing Sega Genesis core"
+    gitPullOrClone "$rootdir/emulatorcores/Genesis-Plus-GX" https://github.com/libretro/Genesis-Plus-GX.git
+    make -f Makefile.libretro
+    if [[ -z `find $rootdir/emulatorcores/Genesis-Plus-GX/ -name "*libretro*.so"` ]]; then
+        __ERRMSGS="$__ERRMSGS Could not successfully compile Sega Genesis core."
+    fi      
+    popd
+}
+
 
 
 
@@ -625,7 +741,7 @@ function retroarch_install()
              6 "Install Atari 2600 core" ON \
              7 "Install Nintendo core" ON \
              8 "Install Super Nintendo core" ON \
-             9 "Install Nintendo64 core" ON \
+             9 "[No Available...Yet] Install Nintendo 64 core" OFF \
              10 "Install Playstation core" ON \
              11 "Install Sega Master System core" ON \
              12 "Install Sega Genesis core" ON \
@@ -751,8 +867,8 @@ while true; do
             2) packages_install ;;
             3) retroarch_install ;;
             4) main_updatescript ;;
-            5) downloadBinaries ;;
-            6) removeAPTPackages ;;
+            5) libretro_update ;;
+            6) install_retroarch ;;
             7) main_options ;;
             8) main_reboot ;;
         esac
