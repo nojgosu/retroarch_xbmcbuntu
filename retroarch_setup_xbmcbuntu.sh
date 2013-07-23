@@ -684,11 +684,13 @@ function install_snes()
     popd  
 }
 
+#install nintendo 64 emulator core (NYI - expected with RetroArch 1.0.0)
 function install_n64()
 {
     printMsg "Ninteno 64 Emulator not available yet - expected to come with RetroArch 1.0.0"
 }
 
+#install Playstation emulator core
 function install_psx()
 {
     printMsg "Installing PSX core"
@@ -701,6 +703,7 @@ function install_psx()
     popd
 }
 
+#install Sega Master System
 function install_sega_master()
 {
     printMsg "Installing Sega Master System core"
@@ -712,6 +715,7 @@ function install_sega_master()
     popd
 }
 
+#install Sega Megadrive / Genesis
 function install_sega_genesis()
 {
     printMsg "Installing Sega Genesis core"
@@ -723,7 +727,41 @@ function install_sega_genesis()
     popd
 }
 
+#install Gameboy Colour
+function install_gbc()
+{
+    printMsg "Installing Gameboy Colour"
+    gitPullOrClone "$rootdir/emulatorcores/vba-next" https://github.com/libretro/vba-next.git
+    make -f Makefile.libretro
+    if [[ -z `find $rootdir/emulatorcores/vba-next/ -name "*libretro*.so"` ]]; then
+        __ERRMSGS="$__ERRMSGS Could not successfully compile Sega Genesis core."
+    fi      
+    popd
+}
 
+#install Gameboy Advance
+function install_gba()
+{
+    printMsg "Installing Gameboy Advance"
+    gitPullOrClone "$rootdir/emulatorcores/vba-next" https://github.com/libretro/vba-next.git
+    make -f Makefile.libretro
+    if [[ -z `find $rootdir/emulatorcores/vba-next/ -name "*libretro*.so"` ]]; then
+        __ERRMSGS="$__ERRMSGS Could not successfully compile Sega Genesis core."
+    fi      
+    popd
+}
+
+# install MAME emulator core
+function install_mame()
+{
+    printMsg "Installing MAME core"
+    gitPullOrClone "$rootdir/emulatorcores/imame4all-libretro" git://github.com/libretro/imame4all-libretro.git
+    make -f makefile.libretro
+    if [[ -z `find $rootdir/emulatorcores/imame4all-libretro/ -name "*libretro*.so"` ]]; then
+        __ERRMSGS="$__ERRMSGS Could not successfully compile MAME core."
+    fi      
+    popd
+}
 
 
 ##################
@@ -858,8 +896,7 @@ while true; do
              4 "Update RetroArch XBMCbuntu setup script"
              5 "Update libretro emulator cores"
              6 "Update RetroArch"
-             7 "Uninstall RetroArch"
-             8 "Perform Reboot" )
+             7 "Perform Reboot" )
     choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)    
     if [ "$choices" != "" ]; then
         case $choices in
@@ -869,8 +906,7 @@ while true; do
             4) main_updatescript ;;
             5) libretro_update ;;
             6) install_retroarch ;;
-            7) main_options ;;
-            8) main_reboot ;;
+            7) main_reboot ;;
         esac
     else
         break
