@@ -266,8 +266,8 @@ function packages_install()
                         build-essential nasm libgl1-mesa-dev libglu1-mesa-dev libsdl1.2-dev \
                         libvorbis-dev libpng12-dev libvpx-dev freepats subversion \
                         libboost-serialization-dev libboost-thread-dev libsdl-ttf2.0-dev \
-                        cmake g++-4.7 unrar-free p7zip p7zip-full libpulse-dev
-                        # libgles2-mesa-dev
+                        cmake g++-4.7 unrar-free p7zip p7zip-full libpulse-dev 
+                        # libgles2-mesa-dev ffmpeg
 }
 
 # prepare folder structure for emulator, cores, front end, and roms
@@ -278,6 +278,13 @@ function prepareFolders()
     pathlist=()
     pathlist+=("$rootdir/savefiles")
     pathlist+=("$rootdir/savestates")
+    pathlist+=("$rootdir/scripts")
+    pathlist+=("$rootdir/rcb")
+    pathlist+=("$rootdir/rcb/boxfront")
+    pathlist+=("$rootdir/rcb/boxback")
+    pathlist+=("$rootdir/rcb/cartridge")
+    pathlist+=("$rootdir/rcb/screenshot")
+    pathlist+=("$rootdir/rcb/fanart")
     pathlist+=("$rootdir/roms/atari2600")
     pathlist+=("$rootdir/roms/gba")
     pathlist+=("$rootdir/roms/gbc")
@@ -336,6 +343,9 @@ function configure_retroarch()
     ensureKeyValue "system_directory" "$rootdir/emulatorcores/" "$rootdir/configs/all/retroarch.cfg"
     ensureKeyValue "video_aspect_ratio" "1.33" "$rootdir/configs/all/retroarch.cfg"
     ensureKeyValue "video_smooth" "false" "$rootdir/configs/all/retroarch.cfg"
+    ensureKeyValue "video_fullscreen" "true" "$rootdir/configs/all/retroarch.cfg"
+    ensureKeyValue "video_fullscreen_x" "0" "$rootdir/configs/all/retroarch.cfg"
+    ensureKeyValue "video_fullscreen_y" "0" "$rootdir/configs/all/retroarch.cfg"
 
     #setup keyboard to exit
     ensureKeyValue "input_exit_emulator" "escape" "$rootdir/configs/all/retroarch.cfg"
@@ -376,6 +386,245 @@ function install_retroarch()
         __ERRMSGS="$__ERRMSGS Could not successfully compile and install RetroArch."
     fi  
     popd
+}
+
+function configure_rcb()
+{
+    printMsg "Configuring RomCollectionBrowser" 
+    
+    #check for RomCollectionBrowser installation
+    
+    if [[ -d "$rootdir/emulators/uae4all" ]]; then
+        rm -rf "$rootdir/emulators/uae4all"
+    fi
+    
+    
+    if [[ ! -d "$/home/$user/.xbmc/ROMCOLLECITONBROWDSER FOLDER" ]]; then
+            dialog --backtitle "RetroArch Setup. Installation folder: $rootdir for user $user" --msgbox "RomCollectionBrowser addon for XBMC missing. Please install before\
+        generating configuration file." 22 76
+        
+        return 0;
+    fi
+    
+    #UPTO HERE
+    
+    #copy scripts for pausing/resuming xbmc
+    cp $scriptdir/scripts/pause_xbmc.sh "$rootdir/scripts/pause_xbmc.sh"
+    cp $scriptdir/scripts/resume_xbmc.sh "$rootdir/scripts/resume_xbmc.sh"
+    #give execution rights
+    chmod +x "$rootdir/scripts/pause_xbmc.sh"
+    chmod +x "$rootdir/scripts/resume_xbmc.sh"
+    chown -R $user $rootdir
+    chgrp -R $user $rootdir
+   
+   #create RomCollectionBrowser configuration
+    cat > "/home/$user/retroarch_xbmcbuntu/text.xml" << _EOF_
+<config version="1.0.6">
+  <RomCollections>
+    <RomCollection id="1" name="SNES">
+      <useBuiltinEmulator>False</useBuiltinEmulator>
+      <gameclient />
+      <emulatorCmd>/usr/local/bin/retroarch</emulatorCmd>
+      <emulatorParams>-L `find $rootdir/emulatorcores/snes9x-next/ -name "*libretro*.so"` --config $rootdir/configs/all/retroarch.cfg --appendconfig $rootdir/configs/gbc/retroarch.cfg "%ROM%"</emulatorParams>
+      <romPath>$rootdir/roms/snes/*.smc</romPath>
+      <saveStatePath />
+      <saveStateParams />
+      <mediaPath type="boxfront">$rootdir/rcb/boxfront/%GAME%.*</mediaPath>
+      <mediaPath type="boxback">$rootdir/rcb/boxback/%GAME%.*</mediaPath>
+      <mediaPath type="cartridge">$rootdir/rcb/cartridge/%GAME%.*</mediaPath>
+      <mediaPath type="screenshot">$rootdir/rcb/screenshot/%GAME%.*</mediaPath>
+      <mediaPath type="fanart">$rootdir/rcb/fanart/%GAME%.*</mediaPath>
+      <preCmd>$rootdir/scripts/pause_xbmc.sh</preCmd>
+      <postCmd>$rootdir/scripts/resume_xbmc.sh</postCmd>
+      <useEmuSolo>False</useEmuSolo>
+      <usePopen>False</usePopen>
+      <ignoreOnScan>False</ignoreOnScan>
+      <allowUpdate>True</allowUpdate>
+      <autoplayVideoMain>True</autoplayVideoMain>
+      <autoplayVideoInfo>True</autoplayVideoInfo>
+      <useFoldernameAsGamename>False</useFoldernameAsGamename>
+      <maxFolderDepth>99</maxFolderDepth>
+      <doNotExtractZipFiles>False</doNotExtractZipFiles>
+      <diskPrefix>_Disk</diskPrefix>
+      <imagePlacingMain>gameinfobig</imagePlacingMain>
+      <imagePlacingInfo>gameinfosmall</imagePlacingInfo>
+      <scraper name="thegamesdb.net" replaceKeyString="" replaceValueString="" />
+      <scraper name="archive.vg" replaceKeyString="" replaceValueString="" />
+      <scraper name="mobygames.com" replaceKeyString="" replaceValueString="" />
+    </RomCollection>
+  </RomCollections>
+  <FileTypes>
+    <FileType id="1" name="boxfront">
+      <type>image</type>
+      <parent>game</parent>
+    </FileType>
+    <FileType id="2" name="boxback">
+      <type>image</type>
+      <parent>game</parent>
+    </FileType>
+    <FileType id="3" name="cartridge">
+      <type>image</type>
+      <parent>game</parent>
+    </FileType>
+    <FileType id="4" name="screenshot">
+      <type>image</type>
+      <parent>game</parent>
+    </FileType>
+    <FileType id="5" name="fanart">
+      <type>image</type>
+      <parent>game</parent>
+    </FileType>
+    <FileType id="6" name="action">
+      <type>image</type>
+      <parent>game</parent>
+    </FileType>
+    <FileType id="7" name="title">
+      <type>image</type>
+      <parent>game</parent>
+    </FileType>
+    <FileType id="8" name="3dbox">
+      <type>image</type>
+      <parent>game</parent>
+    </FileType>
+    <FileType id="9" name="romcollection">
+      <type>image</type>
+      <parent>romcollection</parent>
+    </FileType>
+    <FileType id="10" name="developer">
+      <type>image</type>
+      <parent>developer</parent>
+    </FileType>
+    <FileType id="11" name="publisher">
+      <type>image</type>
+      <parent>publisher</parent>
+    </FileType>
+    <FileType id="12" name="gameplay">
+      <type>video</type>
+      <parent>game</parent>
+    </FileType>
+    <FileType id="13" name="cabinet">
+      <type>image</type>
+      <parent>game</parent>
+    </FileType>
+    <FileType id="14" name="marquee">
+      <type>image</type>
+      <parent>game</parent>
+    </FileType>
+  </FileTypes>
+  <ImagePlacing>
+    <fileTypeFor name="gameinfobig">
+      <fileTypeForGameList>boxfront</fileTypeForGameList>
+      <fileTypeForGameList>screenshot</fileTypeForGameList>
+      <fileTypeForGameList>title</fileTypeForGameList>
+      <fileTypeForGameList>action</fileTypeForGameList>
+      <fileTypeForGameListSelected>boxfront</fileTypeForGameListSelected>
+      <fileTypeForGameListSelected>screenshot</fileTypeForGameListSelected>
+      <fileTypeForGameListSelected>title</fileTypeForGameListSelected>
+      <fileTypeForGameListSelected>action</fileTypeForGameListSelected>
+      <fileTypeForMainViewBackground>fanart</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>boxfront</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>screenshot</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>title</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>action</fileTypeForMainViewBackground>
+      <fileTypeForMainViewGameInfoBig>screenshot</fileTypeForMainViewGameInfoBig>
+      <fileTypeForMainViewGameInfoBig>boxfront</fileTypeForMainViewGameInfoBig>
+      <fileTypeForMainViewGameInfoBig>action</fileTypeForMainViewGameInfoBig>
+      <fileTypeForMainViewGameInfoBig>title</fileTypeForMainViewGameInfoBig>
+      <fileTypeForMainView1>publisher</fileTypeForMainView1>
+      <fileTypeForMainView2>romcollection</fileTypeForMainView2>
+      <fileTypeForMainView3>developer</fileTypeForMainView3>
+    </fileTypeFor>
+    <fileTypeFor name="gameinfosmall">
+      <fileTypeForGameList>boxfront</fileTypeForGameList>
+      <fileTypeForGameList>screenshot</fileTypeForGameList>
+      <fileTypeForGameList>title</fileTypeForGameList>
+      <fileTypeForGameList>action</fileTypeForGameList>
+      <fileTypeForGameListSelected>boxfront</fileTypeForGameListSelected>
+      <fileTypeForGameListSelected>screenshot</fileTypeForGameListSelected>
+      <fileTypeForGameListSelected>title</fileTypeForGameListSelected>
+      <fileTypeForGameListSelected>action</fileTypeForGameListSelected>
+      <fileTypeForMainViewBackground>fanart</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>boxfront</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>screenshot</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>title</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>action</fileTypeForMainViewBackground>
+      <fileTypeForMainViewGameInfoUpperLeft>screenshot</fileTypeForMainViewGameInfoUpperLeft>
+      <fileTypeForMainViewGameInfoUpperLeft>action</fileTypeForMainViewGameInfoUpperLeft>
+      <fileTypeForMainViewGameInfoUpperLeft>title</fileTypeForMainViewGameInfoUpperLeft>
+      <fileTypeForMainViewGameInfoUpperRight>boxfront</fileTypeForMainViewGameInfoUpperRight>
+      <fileTypeForMainViewGameInfoLowerLeft>cartridge</fileTypeForMainViewGameInfoLowerLeft>
+      <fileTypeForMainViewGameInfoLowerRight>boxback</fileTypeForMainViewGameInfoLowerRight>
+      <fileTypeForMainViewGameInfoLowerRight>title</fileTypeForMainViewGameInfoLowerRight>
+      <fileTypeForMainView1>publisher</fileTypeForMainView1>
+      <fileTypeForMainView2>romcollection</fileTypeForMainView2>
+      <fileTypeForMainView3>developer</fileTypeForMainView3>
+    </fileTypeFor>
+    <fileTypeFor name="gameinfomamemarquee">
+      <fileTypeForGameList>marquee</fileTypeForGameList>
+      <fileTypeForGameList>boxfront</fileTypeForGameList>
+      <fileTypeForGameList>title</fileTypeForGameList>
+      <fileTypeForGameListSelected>marquee</fileTypeForGameListSelected>
+      <fileTypeForGameListSelected>boxfront</fileTypeForGameListSelected>
+      <fileTypeForGameListSelected>title</fileTypeForGameListSelected>
+      <fileTypeForMainViewBackground>boxfront</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>title</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>action</fileTypeForMainViewBackground>
+      <fileTypeForMainViewGameInfoLeft>cabinet</fileTypeForMainViewGameInfoLeft>
+      <fileTypeForMainViewGameInfoUpperRight>title</fileTypeForMainViewGameInfoUpperRight>
+      <fileTypeForMainViewGameInfoLowerRight>action</fileTypeForMainViewGameInfoLowerRight>
+      <fileTypeForMainView1>publisher</fileTypeForMainView1>
+      <fileTypeForMainView2>romcollection</fileTypeForMainView2>
+      <fileTypeForMainView3>developer</fileTypeForMainView3>
+    </fileTypeFor>
+    <fileTypeFor name="gameinfomamecabinet">
+      <fileTypeForGameList>cabinet</fileTypeForGameList>
+      <fileTypeForGameList>boxfront</fileTypeForGameList>
+      <fileTypeForGameList>title</fileTypeForGameList>
+      <fileTypeForGameListSelected>cabinet</fileTypeForGameListSelected>
+      <fileTypeForGameListSelected>boxfront</fileTypeForGameListSelected>
+      <fileTypeForGameListSelected>title</fileTypeForGameListSelected>
+      <fileTypeForMainViewBackground>boxfront</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>title</fileTypeForMainViewBackground>
+      <fileTypeForMainViewBackground>action</fileTypeForMainViewBackground>
+      <fileTypeForMainViewGameInfoUpperLeft>title</fileTypeForMainViewGameInfoUpperLeft>
+      <fileTypeForMainViewGameInfoUpperRight>action</fileTypeForMainViewGameInfoUpperRight>
+      <fileTypeForMainViewGameInfoLower>marquee</fileTypeForMainViewGameInfoLower>
+      <fileTypeForMainView1>publisher</fileTypeForMainView1>
+      <fileTypeForMainView2>romcollection</fileTypeForMainView2>
+      <fileTypeForMainView3>developer</fileTypeForMainView3>
+    </fileTypeFor>
+  </ImagePlacing>
+  <Scrapers>
+    <Site descFilePerGame="True" name="local nfo" searchGameByCRC="False">
+      <Scraper parseInstruction="00 - local nfo.xml" source="nfo" />
+    </Site>
+    <Site descFilePerGame="True" name="thegamesdb.net" searchGameByCRC="False">
+      <Scraper parseInstruction="02 - thegamesdb.xml" source="http://thegamesdb.net/api/GetGame.php?name=%GAME%&amp;platform=%PLATFORM%" />
+    </Site>
+    <Site descFilePerGame="True" name="giantbomb.com" searchGameByCRC="False">
+      <Scraper parseInstruction="03.01 - giantbomb - search.xml" returnUrl="true" source="http://api.giantbomb.com/search/?api_key=%GIANTBOMBAPIKey%&amp;query=%GAME%&amp;resources=game&amp;field_list=api_detail_url,name&amp;format=xml" />
+      <Scraper parseInstruction="03.02 - giantbomb - detail.xml" source="1" />
+    </Site>
+    <Site descFilePerGame="True" name="mobygames.com" searchGameByCRC="False">
+      <Scraper parseInstruction="04.01 - mobygames - gamesearch.xml" returnUrl="true" source="http://www.mobygames.com/search/quick?game=%GAME%&amp;p=%PLATFORM%" />
+      <Scraper parseInstruction="04.02 - mobygames - details.xml" source="1" />
+      <Scraper parseInstruction="04.03 - mobygames - coverlink.xml" returnUrl="true" source="1" />
+      <Scraper parseInstruction="04.04 - mobygames - coverart.xml" source="2" />
+      <Scraper parseInstruction="04.05 - mobygames - screenshotlink.xml" returnUrl="true" source="1" />
+      <Scraper parseInstruction="04.06 - mobygames - screenoriglink.xml" returnUrl="true" source="3" />
+      <Scraper parseInstruction="04.07 - mobygames - screenshots.xml" source="4" />
+    </Site>
+    <Site descFilePerGame="True" name="archive.vg" searchGameByCRC="False">
+      <Scraper encoding="iso-8859-1" parseInstruction="05.01 - archive - search.xml" returnUrl="true" source="http://api.archive.vg/2.0/Archive.search/%ARCHIVEAPIKEY%/%GAME%" />
+      <Scraper encoding="iso-8859-1" parseInstruction="05.02 - archive - detail.xml" source="1" />
+    </Site>
+    <Site descFilePerGame="True" name="maws.mameworld.info" searchGameByCRC="False">
+      <Scraper encoding="iso-8859-1" parseInstruction="06 - maws.xml" source="http://maws.mameworld.info/maws/romset/%GAME%" />
+    </Site>
+  </Scrapers>
+</config>
+_EOF_
+
 }
 
 # install driver for XBox 360 controllers
@@ -829,6 +1078,8 @@ function retroarch_install()
     fi
 }
 
+
+
 ######################################
 # here starts the main loop ##########
 ######################################
@@ -893,20 +1144,22 @@ while true; do
     options=(1 "Update atp-get" 
              2 "Install package dependencies"
              3 "Install RetroArch"
-             4 "Update RetroArch XBMCbuntu setup script"
-             5 "Update libretro emulator cores"
-             6 "Update RetroArch"
-             7 "Perform Reboot" )
+             4 "Configure RomCollectionBrowser"
+             5 "Update RetroArch XBMCbuntu setup script"
+             6 "Update libretro emulator cores"
+             7 "Update RetroArch"
+             8 "Perform Reboot" )
     choices=$("${cmd[@]}" "${options[@]}" 2>&1 >/dev/tty)    
     if [ "$choices" != "" ]; then
         case $choices in
             1) update_apt ;;
             2) packages_install ;;
             3) retroarch_install ;;
-            4) main_updatescript ;;
-            5) libretro_update ;;
-            6) install_retroarch ;;
-            7) main_reboot ;;
+            4) configure_rcb;;
+            5) main_updatescript ;;
+            6) libretro_update ;;
+            7) install_retroarch ;;
+            8) main_reboot ;;
         esac
     else
         break
