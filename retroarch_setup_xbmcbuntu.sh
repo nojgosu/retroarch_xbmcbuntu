@@ -393,20 +393,24 @@ function configure_rcb()
     printMsg "Configuring RomCollectionBrowser" 
     
     #check for RomCollectionBrowser installation
-    
-    if [[ -d "$rootdir/emulators/uae4all" ]]; then
-        rm -rf "$rootdir/emulators/uae4all"
-    fi
-    
-    
-    if [[ ! -d "$/home/$user/.xbmc/ROMCOLLECITONBROWDSER FOLDER" ]]; then
+    if [[ ! -d "/home/$user/addons/service.rom.collection.browser" ]]; then
             dialog --backtitle "RetroArch Setup. Installation folder: $rootdir for user $user" --msgbox "RomCollectionBrowser addon for XBMC missing. Please install before\
         generating configuration file." 22 76
         
         return 0;
     fi
     
-    #UPTO HERE
+    if [[ ! -d "$rootdir/scripts" ]]; then
+            dialog --backtitle "RetroArch Setup. Installation folder: $rootdir for user $user" --msgbox "RetroArch not installed. Please install before\
+        generating configuration file." 22 76
+        
+        return 0;
+    fi
+    
+    
+    if [[ ! -d "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser" ]]; then
+            mkdir -p "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser"
+    fi
     
     #copy scripts for pausing/resuming xbmc
     cp $scriptdir/scripts/pause_xbmc.sh "$rootdir/scripts/pause_xbmc.sh"
@@ -418,9 +422,13 @@ function configure_rcb()
     chgrp -R $user $rootdir
    
    #create RomCollectionBrowser configuration
-    cat > "/home/$user/retroarch_xbmcbuntu/text.xml" << _EOF_
+    cat > "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser/config.xml" << _EOF_
 <config version="1.0.6">
   <RomCollections>
+_EOF_
+
+    if [[ -e `find $rootdir/emulatorcores/snes9x-next/ -name "*libretro*.so"` ]]; then   
+        cat >> "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser/config.xml" << _EOF_
     <RomCollection id="1" name="SNES">
       <useBuiltinEmulator>False</useBuiltinEmulator>
       <gameclient />
@@ -452,6 +460,10 @@ function configure_rcb()
       <scraper name="archive.vg" replaceKeyString="" replaceValueString="" />
       <scraper name="mobygames.com" replaceKeyString="" replaceValueString="" />
     </RomCollection>
+_EOF_
+    fi
+
+    cat >> "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser/config.xml" << _EOF_
   </RomCollections>
   <FileTypes>
     <FileType id="1" name="boxfront">
@@ -625,6 +637,8 @@ function configure_rcb()
 </config>
 _EOF_
 
+
+    dialog --backtitle "RetroArch Setup. Installation folder: $rootdir for user $user" --msgbox "RomCollectionBrowser configuration complete. Please restart RCB" 22 76
 }
 
 # install driver for XBox 360 controllers
@@ -639,68 +653,70 @@ function install_xboxdrv()
     echo "xboxdrv --trigger-as-button --wid 1 --led 3 --deadzone 10% --silent &"  >> /etc/rc.local
     echo "sleep 1"                                                                >> /etc/rc.local
     
-    #configure xbox controllers
-    echo "input_player1_joypad_index = \"0\""     >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_b_btn = \"0\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_y_btn = \"2\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_select_btn = \"6\""       >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_start_btn = \"7\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_up_axis = \"-7\""         >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_down_axis = \"+7\""       >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_left_axis = \"-6\""       >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_right_axis = \"+6\""      >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_a_btn = \"1\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_x_btn = \"3\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l_btn = \"4\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r_btn = \"5\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l2_axis = \"+2\""         >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r2_axis = \"+5\""         >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l3_btn = \"9\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r3_btn = \"10\""          >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l_x_plus_axis = \"+0\""   >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l_x_minus_axis = \"-0\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l_y_plus_axis = \"+1\""   >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_l_y_minus_axis = \"-1\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r_x_plus_axis = \"+3\""   >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r_x_minus_axis = \"-3\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r_y_plus_axis = \"+4\""   >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player1_r_y_minus_axis = \"-4\""  >> $rootdir/configs/all/retroarch.cfg
-                                                  
-    echo "input_player2_joypad_index = \"1\""     >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_b_btn = \"0\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_y_btn = \"2\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_select_btn = \"6\""       >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_start_btn = \"7\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_up_axis = \"-7\""         >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_down_axis = \"+7\""       >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_left_axis = \"-6\""       >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_right_axis = \"+6\""      >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_a_btn = \"1\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_x_btn = \"3\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l_btn = \"4\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r_btn = \"5\""            >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l2_axis = \"+2\""         >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r2_axis = \"+5\""         >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l3_btn = \"9\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r3_btn = \"10\""          >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l_x_plus_axis = \"+0\""   >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l_x_minus_axis = \"-0\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l_y_plus_axis = \"+1\""   >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_l_y_minus_axis = \"-1\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r_x_plus_axis = \"+3\""   >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r_x_minus_axis = \"-3\""  >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r_y_plus_axis = \"+4\""   >> $rootdir/configs/all/retroarch.cfg
-    echo "input_player2_r_y_minus_axis = \"-4\""  >> $rootdir/configs/all/retroarch.cfg
-                                                  
-    echo "input_enable_hotkey_btn = \"8\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_exit_emulator_btn = \"5\""        >> $rootdir/configs/all/retroarch.cfg
-    echo "input_rewind_btn = \"4\""               >> $rootdir/configs/all/retroarch.cfg
-    echo "input_save_state_btn = \"3\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_load_state_btn = \"0\""           >> $rootdir/configs/all/retroarch.cfg
-    echo "input_state_slot_increase_btn = \"+6\"" >> $rootdir/configs/all/retroarch.cfg
-    echo "input_state_slot_decrease_btn = \"-6\"" >> $rootdir/configs/all/retroarch.cfg
-    echo "input_disk_eject_toggle_btn = \"7\""    >> $rootdir/configs/all/retroarch.cfg
-    echo "input_disk_next_btn = \"6\""            >> $rootdir/configs/all/retroarch.cfg
+    #configure xbox controllers for retroarch
+    cat >> "$rootdir/configs/all/retroarch.cfg" << _EOF_
+input_player1_joypad_index = "0"
+input_player1_b_btn = "0"
+input_player1_y_btn = "2"
+input_player1_select_btn = "6"
+input_player1_start_btn = "7"
+input_player1_up_axis = "-7"
+input_player1_down_axis = "+7"
+input_player1_left_axis = "-6"
+input_player1_right_axis = "+6"
+input_player1_a_btn = "1"
+input_player1_x_btn = "3"
+input_player1_l_btn = "4"
+input_player1_r_btn = "5"
+input_player1_l2_axis = "+2"
+input_player1_r2_axis = "+5"
+input_player1_l3_btn = "9"
+input_player1_r3_btn = "10"
+input_player1_l_x_plus_axis = "+0"
+input_player1_l_x_minus_axis = "-0"
+input_player1_l_y_plus_axis = "+1"
+input_player1_l_y_minus_axis = "-1"
+input_player1_r_x_plus_axis = "+3"
+input_player1_r_x_minus_axis = "-3"
+input_player1_r_y_plus_axis = "+4"
+input_player1_r_y_minus_axis = "-4"
+
+input_player2_joypad_index = "1"
+input_player2_b_btn = "0"
+input_player2_y_btn = "2"
+input_player2_select_btn = "6"
+input_player2_start_btn = "7"
+input_player2_up_axis = "-7"
+input_player2_down_axis = "+7"
+input_player2_left_axis = "-6"
+input_player2_right_axis = "+6"
+input_player2_a_btn = "1"
+input_player2_x_btn = "3"
+input_player2_l_btn = "4"
+input_player2_r_btn = "5"
+input_player2_l2_axis = "+2"
+input_player2_r2_axis = "+5"
+input_player2_l3_btn = "9"
+input_player2_r3_btn = "10"
+input_player2_l_x_plus_axis = "+0"
+input_player2_l_x_minus_axis = "-0"
+input_player2_l_y_plus_axis = "+1"
+input_player2_l_y_minus_axis = "-1"
+input_player2_r_x_plus_axis = "+3"
+input_player2_r_x_minus_axis = "-3"
+input_player2_r_y_plus_axis = "+4"
+input_player2_r_y_minus_axis = "-4"
+
+input_enable_hotkey_btn = "8"
+input_exit_emulator_btn = "5"
+input_rewind_btn = "4"
+input_save_state_btn = "3"
+input_load_state_btn = "0"
+input_state_slot_increase_btn = "+6"
+input_state_slot_decrease_btn = "-6"
+input_disk_eject_toggle_btn = "7"
+input_disk_next_btn = "6"
+_EOF_
 }
 
 # shows help information in the console
