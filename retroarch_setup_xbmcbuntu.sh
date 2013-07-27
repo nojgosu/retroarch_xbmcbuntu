@@ -393,7 +393,7 @@ function configure_rcb()
     printMsg "Configuring RomCollectionBrowser" 
     
     #check for RomCollectionBrowser installation
-    if [[ ! -d "/home/$user/addons/service.rom.collection.browser" ]]; then
+    if [[ ! -d "/home/$user/.xbmc/addons/service.rom.collection.browser" ]]; then
             dialog --backtitle "RetroArch Setup. Installation folder: $rootdir for user $user" --msgbox "RomCollectionBrowser addon for XBMC missing. Please install before\
         generating configuration file." 22 76
         
@@ -412,14 +412,19 @@ function configure_rcb()
             mkdir -p "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser"
     fi
     
+    #NO LONGER DO THIS,
+    #calling pre and post scripts end up pausing script execution and fails to launch emulator
     #copy scripts for pausing/resuming xbmc
-    cp $scriptdir/scripts/pause_xbmc.sh "$rootdir/scripts/pause_xbmc.sh"
-    cp $scriptdir/scripts/resume_xbmc.sh "$rootdir/scripts/resume_xbmc.sh"
+    #cp $scriptdir/scripts/pause_xbmc.sh "$rootdir/scripts/pause_xbmc.sh"
+    #cp $scriptdir/scripts/resume_xbmc.sh "$rootdir/scripts/resume_xbmc.sh"
     #give execution rights
-    chmod +x "$rootdir/scripts/pause_xbmc.sh"
-    chmod +x "$rootdir/scripts/resume_xbmc.sh"
-    chown -R $user $rootdir
-    chgrp -R $user $rootdir
+    #chmod +x "$rootdir/scripts/pause_xbmc.sh"
+    #chmod +x "$rootdir/scripts/resume_xbmc.sh"
+    #chown -R $user $rootdir
+    #chgrp -R $user $rootdir
+   
+   #setup iterator
+   id=0
    
    #create RomCollectionBrowser configuration
     cat > "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser/config.xml" << _EOF_
@@ -428,12 +433,13 @@ function configure_rcb()
 _EOF_
 
     if [[ -e `find $rootdir/emulatorcores/snes9x-next/ -name "*libretro*.so"` ]]; then   
+        id=`expr $id + 1` #increment id
         cat >> "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser/config.xml" << _EOF_
-    <RomCollection id="1" name="SNES">
+    <RomCollection id="$id" name="SNES">
       <useBuiltinEmulator>False</useBuiltinEmulator>
       <gameclient />
       <emulatorCmd>/usr/local/bin/retroarch</emulatorCmd>
-      <emulatorParams>-L `find $rootdir/emulatorcores/snes9x-next/ -name "*libretro*.so"` --config $rootdir/configs/all/retroarch.cfg --appendconfig $rootdir/configs/gbc/retroarch.cfg "%ROM%"</emulatorParams>
+      <emulatorParams>-L `find $rootdir/emulatorcores/snes9x-next/ -name "*libretro*.so"` --config $rootdir/configs/all/retroarch.cfg --appendconfig $rootdir/configs/snes/retroarch.cfg "%ROM%"</emulatorParams>
       <romPath>$rootdir/roms/snes/*.smc</romPath>
       <saveStatePath />
       <saveStateParams />
@@ -442,8 +448,8 @@ _EOF_
       <mediaPath type="cartridge">$rootdir/rcb/cartridge/%GAME%.*</mediaPath>
       <mediaPath type="screenshot">$rootdir/rcb/screenshot/%GAME%.*</mediaPath>
       <mediaPath type="fanart">$rootdir/rcb/fanart/%GAME%.*</mediaPath>
-      <preCmd>$rootdir/scripts/pause_xbmc.sh</preCmd>
-      <postCmd>$rootdir/scripts/resume_xbmc.sh</postCmd>
+      <preCmd />
+      <postCmd />
       <useEmuSolo>False</useEmuSolo>
       <usePopen>False</usePopen>
       <ignoreOnScan>False</ignoreOnScan>
@@ -930,7 +936,7 @@ function install_nes()
     printMsg "Installing NES core"
     gitPullOrClone "$rootdir/emulatorcores/fceu-next" https://github.com/libretro/fceu-next.git
     pushd fceu-next
-    make -f Makefile.libretro-fceux
+    make -C fceumm-code -f Makefile.libretro
     if [[ -z `find $rootdir/emulatorcores/fceu-next/ -name "*libretro*.so"` ]]; then
         __ERRMSGS="$__ERRMSGS Could not successfully compile NES core."
     fi      
