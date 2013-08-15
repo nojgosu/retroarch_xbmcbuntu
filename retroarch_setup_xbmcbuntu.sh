@@ -393,7 +393,7 @@ function configure_rcb()
     printMsg "Configuring RomCollectionBrowser" 
     
     #check for RomCollectionBrowser installation
-    if [[ ! -d "/home/$user/.xbmc/addons/service.rom.collection.browser" ]]; then
+    if [[ ! -d "/home/$user/.xbmc/addons/script.games.rom.collection.browser" ]]; then
             dialog --backtitle "RetroArch Setup. Installation folder: $rootdir for user $user" --msgbox "RomCollectionBrowser addon for XBMC missing. Please install before\
         generating configuration file." 22 76
         
@@ -410,6 +410,9 @@ function configure_rcb()
     
     if [[ ! -d "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser" ]]; then
             mkdir -p "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser"
+            #set up ownership
+            chown -R $user "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser"
+            chgrp -R $user "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser"
     fi
     
     #NO LONGER DO THIS,
@@ -441,6 +444,43 @@ _EOF_
       <emulatorCmd>/usr/local/bin/retroarch</emulatorCmd>
       <emulatorParams>-L `find $rootdir/emulatorcores/snes9x-next/ -name "*libretro*.so"` --config $rootdir/configs/all/retroarch.cfg --appendconfig $rootdir/configs/snes/retroarch.cfg "%ROM%"</emulatorParams>
       <romPath>$rootdir/roms/snes/*.smc</romPath>
+      <saveStatePath />
+      <saveStateParams />
+      <mediaPath type="boxfront">$rootdir/rcb/boxfront/%GAME%.*</mediaPath>
+      <mediaPath type="boxback">$rootdir/rcb/boxback/%GAME%.*</mediaPath>
+      <mediaPath type="cartridge">$rootdir/rcb/cartridge/%GAME%.*</mediaPath>
+      <mediaPath type="screenshot">$rootdir/rcb/screenshot/%GAME%.*</mediaPath>
+      <mediaPath type="fanart">$rootdir/rcb/fanart/%GAME%.*</mediaPath>
+      <preCmd />
+      <postCmd />
+      <useEmuSolo>False</useEmuSolo>
+      <usePopen>False</usePopen>
+      <ignoreOnScan>False</ignoreOnScan>
+      <allowUpdate>True</allowUpdate>
+      <autoplayVideoMain>True</autoplayVideoMain>
+      <autoplayVideoInfo>True</autoplayVideoInfo>
+      <useFoldernameAsGamename>False</useFoldernameAsGamename>
+      <maxFolderDepth>99</maxFolderDepth>
+      <doNotExtractZipFiles>False</doNotExtractZipFiles>
+      <diskPrefix>_Disk</diskPrefix>
+      <imagePlacingMain>gameinfobig</imagePlacingMain>
+      <imagePlacingInfo>gameinfosmall</imagePlacingInfo>
+      <scraper name="thegamesdb.net" replaceKeyString="" replaceValueString="" />
+      <scraper name="archive.vg" replaceKeyString="" replaceValueString="" />
+      <scraper name="mobygames.com" replaceKeyString="" replaceValueString="" />
+    </RomCollection>
+_EOF_
+    fi
+    
+    if [[ -e `find $rootdir/emulatorcores/mednafen-libretro/ -name "*libretro*.so"` ]]; then  
+        id=`expr $id + 1` #increment id
+        cat >> "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser/config.xml" << _EOF_
+    <RomCollection id="$id" name="PlayStation">
+      <useBuiltinEmulator>False</useBuiltinEmulator>
+      <gameclient />
+      <emulatorCmd>/usr/local/bin/retroarch</emulatorCmd>
+      <emulatorParams>-L `find $rootdir/emulatorcores/mednafen-libretro/ -name "*libretro*.so"` --config $rootdir/configs/all/retroarch.cfg --appendconfig $rootdir/configs/psx/retroarch.cfg "%ROM%"</emulatorParams>
+      <romPath>$rootdir/roms/psx/*.cue</romPath>
       <saveStatePath />
       <saveStateParams />
       <mediaPath type="boxfront">$rootdir/rcb/boxfront/%GAME%.*</mediaPath>
@@ -644,6 +684,9 @@ _EOF_
 _EOF_
 
 
+    #give read/write rights
+    chmod a+w "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser/config.xml"
+    
     dialog --backtitle "RetroArch Setup. Installation folder: $rootdir for user $user" --msgbox "RomCollectionBrowser configuration complete. Please restart RCB" 22 76
 }
 
@@ -662,16 +705,16 @@ function install_xboxdrv()
     #configure xbox controllers for retroarch
     cat >> "$rootdir/configs/all/retroarch.cfg" << _EOF_
 input_player1_joypad_index = "0"
-input_player1_b_btn = "0"
-input_player1_y_btn = "2"
+input_player1_b_btn = "1"
+input_player1_y_btn = "3"
 input_player1_select_btn = "6"
 input_player1_start_btn = "7"
 input_player1_up_axis = "-7"
 input_player1_down_axis = "+7"
 input_player1_left_axis = "-6"
 input_player1_right_axis = "+6"
-input_player1_a_btn = "1"
-input_player1_x_btn = "3"
+input_player1_a_btn = "0"
+input_player1_x_btn = "2"
 input_player1_l_btn = "4"
 input_player1_r_btn = "5"
 input_player1_l2_axis = "+2"
@@ -688,16 +731,16 @@ input_player1_r_y_plus_axis = "+4"
 input_player1_r_y_minus_axis = "-4"
 
 input_player2_joypad_index = "1"
-input_player2_b_btn = "0"
-input_player2_y_btn = "2"
+input_player2_b_btn = "1"
+input_player2_y_btn = "3"
 input_player2_select_btn = "6"
 input_player2_start_btn = "7"
 input_player2_up_axis = "-7"
 input_player2_down_axis = "+7"
 input_player2_left_axis = "-6"
 input_player2_right_axis = "+6"
-input_player2_a_btn = "1"
-input_player2_x_btn = "3"
+input_player2_a_btn = "0"
+input_player2_x_btn = "2"
 input_player2_l_btn = "4"
 input_player2_r_btn = "5"
 input_player2_l2_axis = "+2"
@@ -961,14 +1004,16 @@ function install_n64()
     printMsg "Ninteno 64 Emulator not available yet - expected to come with RetroArch 1.0.0"
 }
 
-#install Playstation emulator core
+#install Playstation emulator core (swapped to mednafen because pcsx rearmed runs poorly on x86)
 function install_psx()
 {
     printMsg "Installing PSX core"
-    gitPullOrClone "$rootdir/emulatorcores/pcsx_rearmed" git://github.com/libretro/pcsx_rearmed.git
-    ./configure --platform=libretro
+    #gitPullOrClone "$rootdir/emulatorcores/pcsx_rearmed" git://github.com/libretro/pcsx_rearmed.git
+    gitPullOrClone "$rootdir/emulatorcores/mednafen-libretro" git://github.com/libretro/mednafen-libretro.git
+    #./configure --platform=libretro
     make
-    if [[ -z `find $rootdir/emulatorcores/pcsx_rearmed/ -name "*libretro*.so"` ]]; then
+    #if [[ -z `find $rootdir/emulatorcores/pcsx_rearmed/ -name "*libretro*.so"` ]]; then
+    if [[ -z `find $rootdir/emulatorcores/mednafen-libretro/ -name "*libretro*.so"` ]]; then
         __ERRMSGS="$__ERRMSGS Could not successfully compile Playstation core."
     fi      
     popd
