@@ -472,15 +472,15 @@ _EOF_
 _EOF_
     fi
     
-    if [[ -e `find $rootdir/emulatorcores/mednafen-libretro/ -name "*libretro*.so"` ]]; then  
+    if [[ -e $rootdir/emulators/epsxe/epsxe ]]; then  
         id=`expr $id + 1` #increment id
         cat >> "/home/$user/.xbmc/userdata/addon_data/script.games.rom.collection.browser/config.xml" << _EOF_
     <RomCollection id="$id" name="PlayStation">
       <useBuiltinEmulator>False</useBuiltinEmulator>
       <gameclient />
-      <emulatorCmd>/usr/local/bin/retroarch</emulatorCmd>
-      <emulatorParams>-L `find $rootdir/emulatorcores/mednafen-libretro/ -name "*libretro*.so"` --config $rootdir/configs/all/retroarch.cfg --appendconfig $rootdir/configs/psx/retroarch.cfg "%ROM%"</emulatorParams>
-      <romPath>$rootdir/roms/psx/*.cue</romPath>
+      <emulatorCmd>$rootdir/emulaotrs/epsxe/epsxe</emulatorCmd>
+      <emulatorParams> </emulatorParams>
+      <romPath>$rootdir/roms/psx/*.iso</romPath>
       <saveStatePath />
       <saveStateParams />
       <mediaPath type="boxfront">$rootdir/rcb/boxfront/%GAME%.*</mediaPath>
@@ -1005,18 +1005,45 @@ function install_n64()
 }
 
 #install Playstation emulator core (swapped to mednafen because pcsx rearmed runs poorly on x86)
+#swapped to espxe because mednafen and pcsx both suffer from slowdown problems. 
 function install_psx()
 {
     printMsg "Installing PSX core"
     #gitPullOrClone "$rootdir/emulatorcores/pcsx_rearmed" git://github.com/libretro/pcsx_rearmed.git
-    gitPullOrClone "$rootdir/emulatorcores/mednafen-libretro" git://github.com/libretro/mednafen-libretro.git
+    #gitPullOrClone "$rootdir/emulatorcores/mednafen-libretro" git://github.com/libretro/mednafen-libretro.git
+    
     #./configure --platform=libretro
-    make
+    #make
     #if [[ -z `find $rootdir/emulatorcores/pcsx_rearmed/ -name "*libretro*.so"` ]]; then
-    if [[ -z `find $rootdir/emulatorcores/mednafen-libretro/ -name "*libretro*.so"` ]]; then
-        __ERRMSGS="$__ERRMSGS Could not successfully compile Playstation core."
-    fi      
-    popd
+    #if [[ -z `find $rootdir/emulatorcores/mednafen-libretro/ -name "*libretro*.so"` ]]; then
+    #    __ERRMSGS="$__ERRMSGS Could not successfully compile Playstation core."
+    #fi      
+    #popd
+    
+    if [[ -d "$rootdir/emulators/epsxe" ]]; then
+        rm -rf "$rootdir/emulators/epsxe"
+    fi
+    wget http://www.epsxe.com/files/epsxe190lin.zip
+    unzip epsxe190lin.zip -d "$rootdir/emulators/epsxe"
+    pushd "$rootdir/emulators/epsxe"
+    #configure
+    
+    if [[ ! -f .epsxerc ]]; then
+        touch .epsxerc
+    fi
+    touch memcards/epsxe000.mcr memcards/epsxe001.mcr 
+    
+    #download gpu plugin
+    wget http://www.pbernert.com/gpupetexgl209.tar.gz
+    tar xzvf advmame.tar.gz -C "$rootdir/emulators/epsxe/plugins"
+    rm gpupetexgl209.tar.gz
+    
+    chown -R $user "$rootdir/emulators/epsxe"
+    if [[ ! -f "$rootdir/emulators/epsxe/epsxe" ]]; then
+        __ERRMSGS="$__ERRMSGS Could not successfully deploy epsxe emulator."
+    fi  
+    popd  
+    rm epsxe190lin.zip
 }
 
 #install Sega Master System
